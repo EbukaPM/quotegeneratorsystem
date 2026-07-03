@@ -1,0 +1,62 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { v4: uuid } = require('uuid');
+const db = require('../db');
+const { JWT_SECRET, authenticate, authorize } = require('../middleware/auth');
+
+const router = express.Router();
+
+function signToken(user) {
+  return jwt.sign(
+    { id: user.id, name: user.name, email: user.email, role: user.role },
+    JWT_SECRET,
+    { expiresIn: '12h' }
+  );
+}
+
+router.post('/register', authenticate, authorize('admin'), (req, res) => {
+  const { name, email, password, role } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'name, email and password are required.' });
+  }
+  if (role && !['admin', 'manager', 'staff'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role.' });
+  }
+
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (existing) {
+    return res.status(409).json({ error: 'A user with this email already exists.' });
+  }
+
+  const id = uuid();
+  const passwordHash = bcrypt.hashSync(password, 10);
+  db.prepare(
+    'INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)'
+  ).run(id, name, email, passwordHash, role || 'staff');
+
+  const user = { id, name, email, role: role || 'staff' };
+  res.status(201).json({ user, token: signToken(user) });
+});
+
+router.post('/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email and password are required.' });
+  }
+
+  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  if (!row || !bcrypt.compareSync(password, row.password_hash)) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  const user = { id: row.id, name: row.name, email: row.email, role: row.role };
+  res.json({ user, token: signToken(user) });
+});
+
+router.get('/me', authenticate, (req, res) => {
+  res.json({ user: req.user });
+});
+
+module.exports = router;
