@@ -10,7 +10,11 @@ const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
+  : true;
+
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 

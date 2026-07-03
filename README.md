@@ -57,6 +57,25 @@ The stack is served on `http://localhost` (nginx reverse proxy → `/api` to bac
 3. Push to `main` — `.github/workflows/deploy.yml` builds the images and uses `appleboy/ssh-action` to pull + restart the stack on the server.
 4. For manual deploys from your machine: set `EC2_HOST` (and optionally `EC2_USER`, `EC2_PATH`) and run `./scripts/deploy.sh`.
 
+## Deploying to Netlify (frontend) + Railway (backend) — free-tier option
+
+This avoids needing a server of your own. Frontend and backend are deployed as separate services and talk to each other over HTTPS.
+
+**Backend on Railway:**
+1. Create a Railway project → "Deploy from GitHub repo" → select `quotegeneratorsystem`.
+2. Set the service's **root directory** to `backend` (Railway will pick up `backend/railway.json` and build from `backend/Dockerfile`).
+3. Add a **Volume** mounted at `/data` (Project → service → Volumes) so the SQLite database persists across deploys.
+4. Set environment variables on the service: `JWT_SECRET` (long random string), `DB_DIR=/data`, `FRONTEND_URL=<your-netlify-site-url>` (once you have it, for CORS), plus optionally the `COMPANY_*` vars from `backend/.env.example`.
+5. Railway assigns a public URL like `https://<service>.up.railway.app` — that's your backend URL.
+
+**Frontend on Netlify:**
+1. Create a Netlify site → "Import from GitHub" → select `quotegeneratorsystem`. It reads `netlify.toml` at the repo root automatically (base `frontend/`, build `npm run build`, publish `dist/`).
+2. Set a build environment variable: `VITE_API_BASE_URL=https://<your-railway-service>.up.railway.app/api`.
+3. Deploy. Netlify gives you a public URL like `https://<site>.netlify.app`.
+4. Go back to Railway and set `FRONTEND_URL` to that Netlify URL so CORS allows it.
+
+Both platforms auto-redeploy on every push to `main` once connected — no GitHub Actions secrets needed for this path.
+
 ## Environment Variables
 
 See `backend/.env.example` and `frontend/.env.example`. Notably, `backend/.env` controls the company profile embedded in generated PDFs (`COMPANY_NAME`, `COMPANY_ADDRESS_LINES`, `COMPANY_EMAIL`, `COMPANY_PHONE`, `COMPANY_REG_NUMBER`, `COMPANY_BRAND_COLOR`) and `JWT_SECRET` (must be changed for production).
