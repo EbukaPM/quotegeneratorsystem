@@ -62,22 +62,23 @@ The stack is served on `http://localhost` (nginx reverse proxy → `/api` to bac
 3. Push to `main` — `.github/workflows/deploy.yml` builds the images and uses `appleboy/ssh-action` to pull + restart the stack on the server.
 4. For manual deploys from your machine: set `EC2_HOST` (and optionally `EC2_USER`, `EC2_PATH`) and run `./scripts/deploy.sh`.
 
-## Deploying to Netlify (frontend) + Railway (backend) — free-tier option
+## Deploying to Netlify (frontend) + Render (backend)
 
-This avoids needing a server of your own. Frontend and backend are deployed as separate services and talk to each other over HTTPS.
+Frontend and backend are deployed as separate services and talk to each other over HTTPS.
 
-**Backend on Railway:**
-1. Create a Railway project → "Deploy from GitHub repo" → select `quotegeneratorsystem`.
-2. Set the service's **root directory** to `backend` (Railway will pick up `backend/railway.json` and build from `backend/Dockerfile`).
-3. Add a **Volume** mounted at `/data` (Project → service → Volumes) so the SQLite database persists across deploys.
-4. Set environment variables on the service: `JWT_SECRET` (long random string), `DB_DIR=/data`, `FRONTEND_URL=<your-netlify-site-url>` (once you have it, for CORS), plus optionally the `COMPANY_*` vars from `backend/.env.example`.
-5. Railway assigns a public URL like `https://<service>.up.railway.app` — that's your backend URL.
+**Backend on Render:**
+1. Create a Render account → **New → Blueprint** → connect the `quotegeneratorsystem` repo. Render reads [render.yaml](render.yaml:1) at the repo root automatically (Docker runtime, builds from `backend/Dockerfile`, health check on `/api/health`).
+2. Render will prompt for the env vars marked `sync: false`: set `FRONTEND_URL` (your Netlify URL, once you have it), and optionally `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`. `JWT_SECRET` is auto-generated.
+3. Render assigns a public URL like `https://safebox-backend.onrender.com` — that's your backend URL.
+
+   > **Free tier note:** Render's free web service plan does not support persistent disks — the `disk` mount in `render.yaml` requires a paid **Starter** plan or higher. On the free plan, the SQLite database is wiped on every deploy/restart. This is fine for a demo, but for real data either upgrade the plan (so the `/data` disk actually persists) or point `DB_DIR` at an external persistent store.
+   > Free services also spin down after 15 minutes of inactivity — the first request after idling will be slow (cold start).
 
 **Frontend on Netlify:**
 1. Create a Netlify site → "Import from GitHub" → select `quotegeneratorsystem`. It reads `netlify.toml` at the repo root automatically (base `frontend/`, build `npm run build`, publish `dist/`).
-2. Set a build environment variable: `VITE_API_BASE_URL=https://<your-railway-service>.up.railway.app/api`.
+2. Set a build environment variable: `VITE_API_BASE_URL=https://<your-render-service>.onrender.com/api`.
 3. Deploy. Netlify gives you a public URL like `https://<site>.netlify.app`.
-4. Go back to Railway and set `FRONTEND_URL` to that Netlify URL so CORS allows it.
+4. Go back to Render and set `FRONTEND_URL` to that Netlify URL so CORS allows it.
 
 Both platforms auto-redeploy on every push to `main` once connected — no GitHub Actions secrets needed for this path.
 
@@ -92,6 +93,8 @@ See `backend/.env.example` and `frontend/.env.example`. Notably, `backend/.env` 
 - Every create/edit/markup change is snapshotted into `quotation_versions` for full history and re-opening past quotes.
 - `GET /api/quotes/:id/pdf` renders a single option as an A4 PDF matching the Safebox quotation layout (green OPTION bar, S/N | Item | Quantity table, full-width TOTAL bar, "This option will power" bullet list).
 - `GET /api/jobs/:id/proposal/pdf` renders a combined proposal PDF: cover page + company profile page + every quotation option for that job.
+- **Client selection & payment (admin only):** once a client picks an option, an admin marks it "selected" (`PUT /api/quotes/:id/select`) — this automatically unselects any other option on the same job. Once selected, the admin can confirm payment (`PUT /api/quotes/:id/confirm-payment`), which locks in the markup amount (`grand_total - subtotal`) as a row in `income_records` — this is what powers the "Confirmed Income" dashboard stat.
+- **Audit trail (admin only):** every login and every create/update/delete/select/payment-confirm action across jobs, quotes, items, users, and the company profile is recorded in `audit_log`, viewable at `/audit-trail` in the app.
 
 ## Roles
 

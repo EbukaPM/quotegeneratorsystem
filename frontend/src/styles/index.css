@@ -587,6 +587,25 @@ textarea:focus {
   background: var(--surface);
 }
 
+.quote-option-card.selected {
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 1px var(--brand-green);
+}
+
+.quote-option-flags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.quote-option-admin-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .quote-option-header {
   display: flex;
   justify-content: space-between;
@@ -731,9 +750,24 @@ textarea:focus {
   margin: 0;
 }
 
+.auth-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .page-loading {
   padding: 40px;
   text-align: center;
+  color: var(--text-muted);
+}
+
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 

@@ -63,9 +63,11 @@ export default function Login() {
           />
         </label>
 
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Signing in...' : 'Sign In'}
-        </button>
+        <div className="auth-actions">
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? 'Signing in...' : 'Sign In'}
+          </button>
+        </div>
       </form>
     </div>
   );

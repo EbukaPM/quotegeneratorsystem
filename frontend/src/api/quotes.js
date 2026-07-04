@@ -6,6 +6,9 @@ export const getQuoteVersions = (id) => client.get(`/quotes/${id}/versions`).the
 export const createQuote = (payload) => client.post('/quotes', payload).then((res) => res.data);
 export const updateQuote = (id, payload) => client.put(`/quotes/${id}`, payload).then((res) => res.data);
 export const deleteQuote = (id) => client.delete(`/quotes/${id}`).then((res) => res.data);
+export const selectQuote = (id, selected = true) =>
+  client.put(`/quotes/${id}/select`, { selected }).then((res) => res.data);
+export const confirmQuotePayment = (id) => client.put(`/quotes/${id}/confirm-payment`, {}).then((res) => res.data);
 
 export const getQuotePdfUrl = (id) => {
   const base = import.meta.env.VITE_API_BASE_URL || '/api';

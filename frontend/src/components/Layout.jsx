@@ -6,6 +6,7 @@ import {
   IconBoxSeam,
   IconUsers,
   IconBuildingFactory2,
+  IconHistory,
   IconLogout,
   IconMenu2,
   IconX,
@@ -37,6 +38,7 @@ export default function Layout() {
   }
   if (user?.role === 'admin') {
     navItems.push({ to: '/users', label: 'Users', icon: IconUsers });
+    navItems.push({ to: '/audit-trail', label: 'Audit Trail', icon: IconHistory });
   }
 
   return (

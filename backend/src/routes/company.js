@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
 const { getCompanyProfile, updateCompanyProfile } = require('../services/companyService');
+const { logAction } = require('../services/auditService');
 
 const router = express.Router();
 
@@ -39,6 +40,7 @@ router.put('/', authenticate, authorize('admin', 'manager'), (req, res) => {
     productPhotoDataUri,
   });
 
+  logAction({ user: req.user, action: 'company_profile.update', entityType: 'company_profile', entityId: '1' });
   res.json(updated);
 });
 

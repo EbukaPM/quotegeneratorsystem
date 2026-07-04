@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { IconBriefcase, IconFileText, IconCash, IconClock } from '@tabler/icons-react';
+import { IconBriefcase, IconFileText, IconClock, IconReceipt2 } from '@tabler/icons-react';
 import { getDashboardStats } from '../api/dashboard';
 
 const currency = new Intl.NumberFormat(undefined, {
@@ -34,8 +34,8 @@ export default function Dashboard() {
   const cards = [
     { label: 'Total Jobs', value: stats.totalJobs, icon: IconBriefcase },
     { label: 'Total Quotes', value: stats.totalQuotes, icon: IconFileText },
-    { label: 'Confirmed Revenue', value: currency.format(stats.totalRevenueProjection), icon: IconCash },
     { label: 'Pending Revenue', value: currency.format(stats.pendingRevenueProjection), icon: IconClock },
+    { label: 'Confirmed Income (Markup)', value: currency.format(stats.confirmedIncome), icon: IconReceipt2 },
   ];
 
   return (

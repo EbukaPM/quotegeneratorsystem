@@ -13,6 +13,8 @@ router.get('/stats', authenticate, (req, res) => {
   const pendingRevenueProjection = db
     .prepare("SELECT COALESCE(SUM(grand_total), 0) AS total FROM quotations WHERE status = 'draft'")
     .get().total;
+  const confirmedIncome = db.prepare('SELECT COALESCE(SUM(amount), 0) AS total FROM income_records').get().total;
+  const selectedQuotesCount = db.prepare('SELECT COUNT(*) AS c FROM quotations WHERE is_selected = 1').get().c;
 
   const revenueByMonth = db
     .prepare(
@@ -42,6 +44,8 @@ router.get('/stats', authenticate, (req, res) => {
     totalQuotes,
     totalRevenueProjection,
     pendingRevenueProjection,
+    confirmedIncome,
+    selectedQuotesCount,
     revenueByMonth,
     recentActivity,
   });

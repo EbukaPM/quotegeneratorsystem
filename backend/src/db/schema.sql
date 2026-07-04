@@ -39,6 +39,12 @@ CREATE TABLE IF NOT EXISTS quotations (
   subtotal REAL NOT NULL DEFAULT 0,
   grand_total REAL NOT NULL DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('draft', 'final')) DEFAULT 'draft',
+  is_selected INTEGER NOT NULL DEFAULT 0,
+  selected_at TEXT,
+  selected_by TEXT REFERENCES users(id),
+  payment_status TEXT NOT NULL CHECK (payment_status IN ('unpaid', 'paid')) DEFAULT 'unpaid',
+  paid_at TEXT,
+  paid_by TEXT REFERENCES users(id),
   created_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -83,7 +89,29 @@ CREATE TABLE IF NOT EXISTS company_profile (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS income_records (
+  id TEXT PRIMARY KEY,
+  quotation_id TEXT NOT NULL REFERENCES quotations(id) ON DELETE CASCADE,
+  job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  amount REAL NOT NULL,
+  recorded_by TEXT REFERENCES users(id),
+  recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES users(id),
+  user_name TEXT,
+  action TEXT NOT NULL,
+  entity_type TEXT,
+  entity_id TEXT,
+  details TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_created_by ON jobs(created_by);
 CREATE INDEX IF NOT EXISTS idx_quotations_job_id ON quotations(job_id);
 CREATE INDEX IF NOT EXISTS idx_quotation_items_quotation_id ON quotation_items(quotation_id);
 CREATE INDEX IF NOT EXISTS idx_quotation_versions_quotation_id ON quotation_versions(quotation_id);
+CREATE INDEX IF NOT EXISTS idx_income_records_job_id ON income_records(job_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);

@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { IconPlus, IconDownload, IconHistory, IconFilePlus } from '@tabler/icons-react';
+import { IconPlus, IconDownload, IconHistory, IconFilePlus, IconCheck, IconCash } from '@tabler/icons-react';
 import { getJob, downloadProposalPdf } from '../api/jobs';
-import { listQuotesForJob, downloadQuotePdf } from '../api/quotes';
+import { listQuotesForJob, downloadQuotePdf, selectQuote, confirmQuotePayment } from '../api/quotes';
+import { useAuth } from '../context/AuthContext';
 
 export default function JobDetail() {
   const { jobId } = useParams();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [job, setJob] = useState(null);
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState(null);
 
   const currency = new Intl.NumberFormat(undefined, {
     style: 'currency',
@@ -30,8 +34,35 @@ export default function JobDetail() {
 
   useEffect(load, [jobId]);
 
+  const handleSelect = async (quote, selected) => {
+    setError('');
+    setBusyId(quote.id);
+    try {
+      await selectQuote(quote.id, selected);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update selection.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleConfirmPayment = async (quote) => {
+    if (!window.confirm(`Confirm that ${currency.format(quote.grand_total)} has been paid for this option?`)) return;
+    setError('');
+    setBusyId(quote.id);
+    try {
+      await confirmQuotePayment(quote.id);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to confirm payment.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) return <div className="page-loading">Loading job...</div>;
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (error && !job) return <div className="alert alert-error">{error}</div>;
   if (!job) return null;
 
   return (
@@ -53,6 +84,8 @@ export default function JobDetail() {
         </div>
       </div>
 
+      {error && <div className="alert alert-error">{error}</div>}
+
       <div className="panel">
         <h2>Client Details</h2>
         <dl className="detail-list">
@@ -71,7 +104,7 @@ export default function JobDetail() {
         <h2>Quotation Options</h2>
         <div className="quote-option-grid">
           {quotes.map((q) => (
-            <div className="quote-option-card" key={q.id}>
+            <div className={`quote-option-card ${q.is_selected ? 'selected' : ''}`} key={q.id}>
               <div className="quote-option-header">
                 <span className="option-badge">OPTION {q.option_number}</span>
                 <span className={`badge badge-${q.status}`}>{q.status}</span>
@@ -79,6 +112,44 @@ export default function JobDetail() {
               <h3>{q.title}</h3>
               <p className="quote-total">{currency.format(q.grand_total)}</p>
               <p className="quote-markup">Markup: {q.markup_percent}%</p>
+
+              <div className="quote-option-flags">
+                {q.is_selected ? <span className="badge badge-final">Selected by client</span> : null}
+                {q.payment_status === 'paid' ? <span className="badge badge-final">Paid</span> : null}
+              </div>
+
+              {isAdmin && (
+                <div className="quote-option-admin-actions">
+                  {!q.is_selected && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      disabled={busyId === q.id}
+                      onClick={() => handleSelect(q, true)}
+                    >
+                      <IconCheck size={14} /> Mark Selected
+                    </button>
+                  )}
+                  {q.is_selected && q.payment_status !== 'paid' && (
+                    <>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        disabled={busyId === q.id}
+                        onClick={() => handleSelect(q, false)}
+                      >
+                        Unselect
+                      </button>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        disabled={busyId === q.id}
+                        onClick={() => handleConfirmPayment(q)}
+                      >
+                        <IconCash size={14} /> Confirm Payment
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="quote-option-actions">
                 <Link to={`/quotes/${q.id}/edit`}>Edit</Link>
                 <Link to={`/quotes/${q.id}/history`}>

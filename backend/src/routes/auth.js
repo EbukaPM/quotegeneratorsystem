@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuid } = require('uuid');
 const db = require('../db');
 const { JWT_SECRET, authenticate, authorize } = require('../middleware/auth');
+const { logAction } = require('../services/auditService');
 
 const router = express.Router();
 
@@ -37,6 +38,13 @@ router.post('/register', authenticate, authorize('admin'), (req, res) => {
   ).run(id, name, email, passwordHash, role || 'staff');
 
   const user = { id, name, email, role: role || 'staff' };
+  logAction({
+    user: req.user,
+    action: 'user.create',
+    entityType: 'user',
+    entityId: id,
+    details: { name, email, role: user.role },
+  });
   res.status(201).json({ user, token: signToken(user) });
 });
 
@@ -52,6 +60,7 @@ router.post('/login', (req, res) => {
   }
 
   const user = { id: row.id, name: row.name, email: row.email, role: row.role };
+  logAction({ user, action: 'auth.login', entityType: 'user', entityId: user.id });
   res.json({ user, token: signToken(user) });
 });
 

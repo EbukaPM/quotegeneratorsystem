@@ -8,6 +8,8 @@ const quoteRoutes = require('./routes/quotes');
 const itemRoutes = require('./routes/items');
 const dashboardRoutes = require('./routes/dashboard');
 const companyRoutes = require('./routes/company');
+const userRoutes = require('./routes/users');
+const auditRoutes = require('./routes/audit');
 
 const app = express();
 
@@ -27,6 +29,8 @@ app.use('/api/quotes', quoteRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/audit', auditRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found.' });

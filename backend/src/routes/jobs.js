@@ -4,6 +4,7 @@ const db = require('../db');
 const { authenticate, authorize } = require('../middleware/auth');
 const quoteService = require('../services/quoteService');
 const { renderProposalPdf } = require('../services/pdfService');
+const { logAction } = require('../services/auditService');
 
 const router = express.Router();
 
@@ -65,6 +66,7 @@ router.post('/', authenticate, authorize('admin', 'manager', 'staff'), (req, res
     `INSERT INTO jobs (id, name, client_name, client_address, client_contact, description, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).run(id, name, client_name || null, client_address || null, client_contact || null, description || null, req.user.id);
+  logAction({ user: req.user, action: 'job.create', entityType: 'job', entityId: id, details: { name } });
   res.status(201).json(db.prepare('SELECT * FROM jobs WHERE id = ?').get(id));
 });
 
@@ -85,14 +87,23 @@ router.put('/:id', authenticate, authorize('admin', 'manager'), (req, res) => {
     description ?? existing.description,
     req.params.id
   );
+  logAction({ user: req.user, action: 'job.update', entityType: 'job', entityId: req.params.id });
   res.json(db.prepare('SELECT * FROM jobs WHERE id = ?').get(req.params.id));
 });
 
 router.delete('/:id', authenticate, authorize('admin'), (req, res) => {
+  const existing = db.prepare('SELECT * FROM jobs WHERE id = ?').get(req.params.id);
   const result = db.prepare('DELETE FROM jobs WHERE id = ?').run(req.params.id);
   if (result.changes === 0) {
     return res.status(404).json({ error: 'Job not found.' });
   }
+  logAction({
+    user: req.user,
+    action: 'job.delete',
+    entityType: 'job',
+    entityId: req.params.id,
+    details: { name: existing?.name },
+  });
   res.status(204).send();
 });
 
