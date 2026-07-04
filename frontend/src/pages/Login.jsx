@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import PasswordInput from '../components/PasswordInput';
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -32,29 +33,33 @@ export default function Login() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
+        <img src="/safebox-icon.png" alt="Safebox Energy" className="auth-logo" />
         <h1>Safebox Quotation System</h1>
         <p className="auth-subtitle">Sign in to manage jobs and quotations</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 
-        <label>
+        <label htmlFor="login-email">
           Email
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             autoFocus
+            autoComplete="username"
           />
         </label>
 
-        <label>
+        <label htmlFor="login-password">
           Password
-          <input
-            type="password"
+          <PasswordInput
+            id="login-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
         </label>
 

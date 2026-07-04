@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer');
 const { buildQuotationHtml, buildProposalHtml } = require('../templates/quotationTemplate');
+const { getCompanyProfile } = require('./companyService');
 
 let browserPromise = null;
 
@@ -30,11 +31,11 @@ async function renderHtmlToPdf(html) {
 }
 
 function renderQuotationPdf(quotation, job) {
-  return renderHtmlToPdf(buildQuotationHtml(quotation, job));
+  return renderHtmlToPdf(buildQuotationHtml(quotation, job, getCompanyProfile()));
 }
 
 function renderProposalPdf(job, quotations) {
-  return renderHtmlToPdf(buildProposalHtml(job, quotations));
+  return renderHtmlToPdf(buildProposalHtml(job, quotations, getCompanyProfile()));
 }
 
 async function closeBrowser() {

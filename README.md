@@ -33,7 +33,12 @@ cd backend && npm run dev   # http://localhost:4000
 cd frontend && npm run dev  # http://localhost:5173 (proxies /api to :4000)
 ```
 
-Default seeded admin login: `admin@safebox.local` / `Admin@123` (change immediately in production).
+A super admin account is seeded automatically the first time the database is created:
+
+- **Email:** `superadmin@safeboxenergy.com`
+- **Password:** `SafeboxAdmin@2026`
+
+Override these via `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` in `backend/.env` before the first run, and change the password immediately after logging in for production use.
 
 ## Running with Docker (development, hot reload)
 

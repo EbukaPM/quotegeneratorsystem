@@ -9,6 +9,7 @@ import QuoteEditor from './pages/QuoteEditor';
 import QuoteHistory from './pages/QuoteHistory';
 import Items from './pages/Items';
 import Users from './pages/Users';
+import CompanyProfile from './pages/CompanyProfile';
 import NotFound from './pages/NotFound';
 
 export default function App() {
@@ -36,6 +37,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['admin']}>
               <Users />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="company-profile"
+          element={
+            <ProtectedRoute roles={['admin', 'manager']}>
+              <CompanyProfile />
             </ProtectedRoute>
           }
         />

@@ -66,6 +66,23 @@ CREATE TABLE IF NOT EXISTS quotation_versions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS company_profile (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  name TEXT NOT NULL,
+  reg_number TEXT,
+  address_lines TEXT NOT NULL DEFAULT '[]',
+  email TEXT,
+  phone TEXT,
+  who_we_are TEXT,
+  mission TEXT,
+  vision TEXT,
+  products_intro TEXT,
+  products_note TEXT,
+  products_list TEXT NOT NULL DEFAULT '[]',
+  product_photo_data_uri TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_created_by ON jobs(created_by);
 CREATE INDEX IF NOT EXISTS idx_quotations_job_id ON quotations(job_id);
 CREATE INDEX IF NOT EXISTS idx_quotation_items_quotation_id ON quotation_items(quotation_id);

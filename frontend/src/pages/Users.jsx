@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { register } from '../api/auth';
+import PasswordInput from '../components/PasswordInput';
 
 export default function Users() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff' });
@@ -38,9 +39,17 @@ export default function Users() {
           Email
           <input type="email" name="email" value={form.email} onChange={handleChange} required />
         </label>
-        <label>
+        <label htmlFor="new-user-password">
           Password
-          <input type="password" name="password" value={form.password} onChange={handleChange} required minLength={6} />
+          <PasswordInput
+            id="new-user-password"
+            name="password"
+            value={form.password}
+            onChange={handleChange}
+            required
+            minLength={6}
+            autoComplete="new-password"
+          />
         </label>
         <label>
           Role

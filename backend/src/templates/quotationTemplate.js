@@ -1,5 +1,3 @@
-const company = require('../config/company');
-
 const currency = process.env.CURRENCY_SYMBOL || '₦';
 
 function formatMoney(value) {
@@ -17,7 +15,8 @@ function escapeHtml(value) {
   }[ch]));
 }
 
-const baseStyles = `
+function baseStyles(company) {
+  return `
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
   body {
@@ -42,7 +41,7 @@ const baseStyles = `
     align-items: flex-start;
     margin-bottom: 18px;
   }
-  .page-header img.logo { width: 46px; height: 46px; }
+  .page-header img.logo { width: 46px; height: 46px; object-fit: contain; }
   .page-header .address-block {
     text-align: right;
     font-size: 10.5px;
@@ -70,8 +69,9 @@ const baseStyles = `
     background: ${company.brandColorLight};
   }
 `;
+}
 
-function pageHeader() {
+function pageHeader(company) {
   return `
   <div class="page-header">
     <img class="logo" src="${company.logoDataUri}" alt="${escapeHtml(company.name)} logo" />
@@ -82,7 +82,7 @@ function pageHeader() {
   </div>`;
 }
 
-function pageFooter() {
+function pageFooter(company) {
   return `
   <div class="page-footer">
     <span>Email: ${escapeHtml(company.email)}</span>
@@ -90,11 +90,10 @@ function pageFooter() {
   </div>`;
 }
 
-function buildCoverPageHtml() {
+function buildCoverPageHtml(company) {
   return `
   <div class="page cover-page" style="align-items: center; justify-content: center; text-align: center;">
-    <img src="${company.logoDataUri}" alt="logo" style="width: 220px; height: 220px; margin-bottom: 48px;" />
-    <h1 style="font-size: 24px; margin: 0;">${escapeHtml(company.name)}</h1>
+    <img src="${company.fullLogoDataUri}" alt="logo" style="width: 320px; margin-bottom: 48px;" />
     <p style="font-weight: 700; margin: 4px 0 24px;">${escapeHtml(company.regNumber)}</p>
     <div style="font-size: 13px; line-height: 1.8;">
       ${company.addressLines.map((line) => `<div>${escapeHtml(line)}</div>`).join('')}
@@ -102,10 +101,10 @@ function buildCoverPageHtml() {
   </div>`;
 }
 
-function buildProfilePageHtml() {
+function buildProfilePageHtml(company) {
   return `
   <div class="page">
-    ${pageHeader()}
+    ${pageHeader(company)}
     <div class="content">
       <h2 style="text-align: center; color: ${company.brandColor}; font-size: 18px;">Who We Are</h2>
       <p style="text-align: center; max-width: 640px; margin: 0 auto 24px; font-size: 11.5px; line-height: 1.7;">
@@ -140,11 +139,11 @@ function buildProfilePageHtml() {
         }
       </div>
     </div>
-    ${pageFooter()}
+    ${pageFooter(company)}
   </div>`;
 }
 
-function buildOptionPageHtml(quotation, job) {
+function buildOptionPageHtml(quotation, job, company) {
   const rows = quotation.items
     .map(
       (item, index) => `
@@ -168,7 +167,7 @@ function buildOptionPageHtml(quotation, job) {
 
   return `
   <div class="page">
-    ${pageHeader()}
+    ${pageHeader(company)}
     <div class="content">
       <div style="text-align: center; margin-bottom: 14px;">
         <span style="display: inline-block; background: ${company.brandColor}; color: #000; font-weight: 700; font-size: 13px; padding: 6px 22px;">
@@ -209,28 +208,32 @@ function buildOptionPageHtml(quotation, job) {
           : ''
       }
     </div>
-    ${pageFooter()}
+    ${pageFooter(company)}
   </div>`;
 }
 
-function wrapHtmlDocument(bodyHtml) {
+function wrapHtmlDocument(bodyHtml, company) {
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
-<style>${baseStyles}</style>
+<style>${baseStyles(company)}</style>
 </head>
 <body>${bodyHtml}</body>
 </html>`;
 }
 
-function buildQuotationHtml(quotation, job) {
-  return wrapHtmlDocument(buildOptionPageHtml(quotation, job));
+function buildQuotationHtml(quotation, job, company) {
+  return wrapHtmlDocument(buildOptionPageHtml(quotation, job, company), company);
 }
 
-function buildProposalHtml(job, quotations) {
-  const pages = [buildCoverPageHtml(), buildProfilePageHtml(), ...quotations.map((q) => buildOptionPageHtml(q, job))];
-  return wrapHtmlDocument(pages.join('\n'));
+function buildProposalHtml(job, quotations, company) {
+  const pages = [
+    buildCoverPageHtml(company),
+    buildProfilePageHtml(company),
+    ...quotations.map((q) => buildOptionPageHtml(q, job, company)),
+  ];
+  return wrapHtmlDocument(pages.join('\n'), company);
 }
 
 module.exports = { buildQuotationHtml, buildProposalHtml, formatMoney };

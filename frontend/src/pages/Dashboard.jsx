@@ -57,12 +57,17 @@ export default function Dashboard() {
       <div className="panel">
         <h2>Revenue by Month</h2>
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={stats.revenueByMonth}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip formatter={(value) => currency.format(value)} />
-            <Bar dataKey="total" fill="#0b3d91" radius={[4, 4, 0, 0]} />
+          <BarChart data={stats.revenueByMonth} margin={{ left: 8, right: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} />
+            <YAxis
+              stroke="var(--text-muted)"
+              tick={{ fill: 'var(--text-muted)' }}
+              width={72}
+              tickFormatter={(value) => new Intl.NumberFormat(undefined, { notation: 'compact' }).format(value)}
+            />
+            <Tooltip formatter={(value) => currency.format(value)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+            <Bar dataKey="total" fill="#7a9a1f" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

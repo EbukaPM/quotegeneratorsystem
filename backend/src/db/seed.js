@@ -5,11 +5,18 @@ const db = require('./index');
 function seed() {
   const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (userCount === 0) {
-    const passwordHash = bcrypt.hashSync('Admin@123', 10);
+    const email = process.env.SUPER_ADMIN_EMAIL || 'superadmin@safeboxenergy.com';
+    const password = process.env.SUPER_ADMIN_PASSWORD || 'SafeboxAdmin@2026';
+    const passwordHash = bcrypt.hashSync(password, 10);
     db.prepare(
       'INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)'
-    ).run(uuid(), 'System Admin', 'admin@safebox.local', passwordHash, 'admin');
-    console.log('Seeded default admin user: admin@safebox.local / Admin@123');
+    ).run(uuid(), 'Super Admin', email, passwordHash, 'admin');
+    console.log('----------------------------------------------------');
+    console.log(' Seeded super admin account:');
+    console.log(`   email:    ${email}`);
+    console.log(`   password: ${password}`);
+    console.log(' Change this password after first login.');
+    console.log('----------------------------------------------------');
   }
 
   const itemCount = db.prepare('SELECT COUNT(*) AS c FROM items').get().c;
@@ -35,6 +42,9 @@ function seed() {
     insertMany(catalog);
     console.log('Seeded default item catalog.');
   }
+
+  // eslint-disable-next-line global-require
+  require('../services/companyService').getCompanyProfile();
 }
 
 seed();
