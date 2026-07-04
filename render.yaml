@@ -12,15 +12,9 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
-      - key: DB_DIR
-        value: /data
       - key: FRONTEND_URL
         sync: false
       - key: SUPER_ADMIN_EMAIL
         sync: false
       - key: SUPER_ADMIN_PASSWORD
         sync: false
-    disk:
-      name: safebox-data
-      mountPath: /data
-      sizeGB: 1

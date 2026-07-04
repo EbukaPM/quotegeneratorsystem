@@ -66,13 +66,12 @@ The stack is served on `http://localhost` (nginx reverse proxy → `/api` to bac
 
 Frontend and backend are deployed as separate services and talk to each other over HTTPS.
 
-**Backend on Render:**
-1. Create a Render account → **New → Blueprint** → connect the `quotegeneratorsystem` repo. Render reads [render.yaml](render.yaml:1) at the repo root automatically (Docker runtime, builds from `backend/Dockerfile`, health check on `/api/health`).
+**Backend on Render (free tier):**
+1. Create a Render account → **New → Blueprint** → connect the `quotegeneratorsystem` repo. Render reads [render.yaml](render.yaml:1) at the repo root automatically (Docker runtime, free plan, builds from `backend/Dockerfile`, health check on `/api/health`).
 2. Render will prompt for the env vars marked `sync: false`: set `FRONTEND_URL` (your Netlify URL, once you have it), and optionally `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`. `JWT_SECRET` is auto-generated.
 3. Render assigns a public URL like `https://safebox-backend.onrender.com` — that's your backend URL.
 
-   > **Free tier note:** Render's free web service plan does not support persistent disks — the `disk` mount in `render.yaml` requires a paid **Starter** plan or higher. On the free plan, the SQLite database is wiped on every deploy/restart. This is fine for a demo, but for real data either upgrade the plan (so the `/data` disk actually persists) or point `DB_DIR` at an external persistent store.
-   > Free services also spin down after 15 minutes of inactivity — the first request after idling will be slow (cold start).
+   > **Free tier limitations:** there's no persistent disk on this plan, so the SQLite database (and anything in it — jobs, quotes, uploaded photos) is **wiped every time the service redeploys or restarts**. Render also spins the service down after 15 minutes of inactivity, so the first request after idling will be slow (cold start, often 30-60s). This is fine for demoing the app, but don't rely on it for real client data yet — when you're ready, add a `disk` block back to `render.yaml` (mounted at `/data`) and upgrade to the Starter plan or higher to get real persistence.
 
 **Frontend on Netlify:**
 1. Create a Netlify site → "Import from GitHub" → select `quotegeneratorsystem`. It reads `netlify.toml` at the repo root automatically (base `frontend/`, build `npm run build`, publish `dist/`).
