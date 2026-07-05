@@ -34,7 +34,10 @@ async function renderHtmlToPdf(html) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    // 'load' (not 'networkidle0') is the right signal for static, embedded
+    // data-URI content - and a longer timeout gives headroom on slow/shared
+    // free-tier CPUs where the heavier multi-page proposal can take a while.
+    await page.setContent(html, { waitUntil: 'load', timeout: 60000 });
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
