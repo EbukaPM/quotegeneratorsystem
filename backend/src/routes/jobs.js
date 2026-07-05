@@ -52,7 +52,7 @@ router.get('/:id/proposal/pdf', authenticate, async (req, res) => {
     res.send(pdfBuffer);
   } catch (err) {
     console.error('Proposal PDF generation failed:', err);
-    res.status(500).json({ error: 'Failed to generate proposal PDF.' });
+    res.status(500).json({ error: 'Failed to generate proposal PDF.', detail: err.message });
   }
 });
 
