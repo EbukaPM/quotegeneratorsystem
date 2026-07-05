@@ -4,12 +4,28 @@ const { getCompanyProfile } = require('./companyService');
 
 let browserPromise = null;
 
-function getBrowser() {
+function launchBrowser() {
+  return puppeteer.launch({
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      // Docker/Render-style containers give /dev/shm very little space by
+      // default; Chromium's default shared-memory usage overflows it and
+      // crashes, especially on heavier multi-page renders. This routes
+      // that usage to /tmp instead.
+      '--disable-dev-shm-usage',
+    ],
+  });
+}
+
+async function getBrowser() {
   if (!browserPromise) {
-    browserPromise = puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    browserPromise = launchBrowser();
+  }
+  const browser = await browserPromise;
+  if (!browser.connected) {
+    browserPromise = launchBrowser();
   }
   return browserPromise;
 }
