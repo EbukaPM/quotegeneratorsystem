@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const db = require('../db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
@@ -12,7 +13,11 @@ function authenticate(req, res, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload;
+    const current = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(payload.id);
+    if (!current) {
+      return res.status(401).json({ error: 'This account no longer exists. Please sign in again.' });
+    }
+    req.user = current;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired token.' });
