@@ -8,11 +8,11 @@ const { logAction } = require('../services/auditService');
 
 const router = express.Router();
 
-// GET /quotes/:jobId -> list all quotation options for a job
-router.get('/:jobId', authenticate, (req, res) => {
+// GET /quotes/:projectId -> list all quotation options for a project
+router.get('/:projectId', authenticate, (req, res) => {
   const quotations = db
-    .prepare('SELECT * FROM quotations WHERE job_id = ? ORDER BY option_number')
-    .all(req.params.jobId);
+    .prepare('SELECT * FROM quotations WHERE project_id = ? ORDER BY option_number')
+    .all(req.params.projectId);
   const withItems = quotations.map((q) => quoteService.getQuotationWithItems(q.id));
   res.json(withItems);
 });
@@ -46,9 +46,9 @@ router.get('/:id/pdf', authenticate, async (req, res) => {
   if (!quotation) {
     return res.status(404).json({ error: 'Quotation not found.' });
   }
-  const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(quotation.job_id);
+  const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(quotation.project_id);
   try {
-    const pdfBuffer = await renderQuotationPdf(quotation, job);
+    const pdfBuffer = await renderQuotationPdf(quotation, project);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `inline; filename="quotation-${quotation.option_number}.pdf"`,
@@ -60,21 +60,24 @@ router.get('/:id/pdf', authenticate, async (req, res) => {
   }
 });
 
-// POST /quotes -> create a new quotation option for a job
-router.post('/', authenticate, authorize('admin', 'manager', 'staff'), (req, res) => {
-  const { job_id, option_number, title, power_description, markup_percent, items } = req.body;
+// POST /quotes -> create a new quotation option for a project (only while the project is a 'prospect')
+router.post('/', authenticate, authorize('admin', 'super_admin'), (req, res) => {
+  const { project_id, option_number, title, power_description, markup_percent, items } = req.body;
 
-  if (!job_id || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'job_id and a non-empty items array are required.' });
+  if (!project_id || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'project_id and a non-empty items array are required.' });
   }
 
-  const job = db.prepare('SELECT id FROM jobs WHERE id = ?').get(job_id);
-  if (!job) {
-    return res.status(404).json({ error: 'Job not found.' });
+  const project = db.prepare('SELECT id, status FROM projects WHERE id = ?').get(project_id);
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found.' });
+  }
+  if (project.status !== 'prospect') {
+    return res.status(409).json({ error: 'Quotation options can only be added while the project is in prospect status.' });
   }
 
   const quotation = quoteService.createQuotation({
-    jobId: job_id,
+    projectId: project_id,
     optionNumber: option_number || 1,
     title,
     powerDescription: power_description,
@@ -88,13 +91,13 @@ router.post('/', authenticate, authorize('admin', 'manager', 'staff'), (req, res
     action: 'quote.create',
     entityType: 'quotation',
     entityId: quotation.id,
-    details: { job_id, option_number: quotation.option_number },
+    details: { project_id, option_number: quotation.option_number },
   });
   res.status(201).json(quotation);
 });
 
 // PUT /quotes/:id/select -> mark this option as the one the client picked (or unmark it)
-router.put('/:id/select', authenticate, authorize('admin'), (req, res) => {
+router.put('/:id/select', authenticate, authorize('admin', 'super_admin'), (req, res) => {
   const quotation = db.prepare('SELECT * FROM quotations WHERE id = ?').get(req.params.id);
   if (!quotation) {
     return res.status(404).json({ error: 'Quotation not found.' });
@@ -104,11 +107,14 @@ router.put('/:id/select', authenticate, authorize('admin'), (req, res) => {
 
   if (selected) {
     db.prepare(
-      "UPDATE quotations SET is_selected = 0, selected_at = NULL, selected_by = NULL WHERE job_id = ?"
-    ).run(quotation.job_id);
+      "UPDATE quotations SET is_selected = 0, selected_at = NULL, selected_by = NULL WHERE project_id = ?"
+    ).run(quotation.project_id);
     db.prepare(
       "UPDATE quotations SET is_selected = 1, selected_at = datetime('now'), selected_by = ? WHERE id = ?"
     ).run(req.user.id, req.params.id);
+    db.prepare(
+      "UPDATE projects SET status = 'quote_accepted', updated_at = datetime('now') WHERE id = ? AND status = 'prospect'"
+    ).run(quotation.project_id);
   } else {
     db.prepare(
       "UPDATE quotations SET is_selected = 0, selected_at = NULL, selected_by = NULL WHERE id = ?"
@@ -120,49 +126,25 @@ router.put('/:id/select', authenticate, authorize('admin'), (req, res) => {
     action: selected ? 'quote.select' : 'quote.unselect',
     entityType: 'quotation',
     entityId: req.params.id,
-    details: { job_id: quotation.job_id, option_number: quotation.option_number },
-  });
-
-  res.json(quoteService.getQuotationWithItems(req.params.id));
-});
-
-// PUT /quotes/:id/confirm-payment -> confirm the selected option has been paid, capturing markup as income
-router.put('/:id/confirm-payment', authenticate, authorize('admin'), (req, res) => {
-  const quotation = db.prepare('SELECT * FROM quotations WHERE id = ?').get(req.params.id);
-  if (!quotation) {
-    return res.status(404).json({ error: 'Quotation not found.' });
-  }
-  if (!quotation.is_selected) {
-    return res.status(400).json({ error: 'Only the option selected by the client can be marked as paid.' });
-  }
-  if (quotation.payment_status === 'paid') {
-    return res.json(quoteService.getQuotationWithItems(req.params.id));
-  }
-
-  db.prepare(
-    "UPDATE quotations SET payment_status = 'paid', paid_at = datetime('now'), paid_by = ? WHERE id = ?"
-  ).run(req.user.id, req.params.id);
-
-  const markupAmount = quotation.grand_total - quotation.subtotal;
-  const incomeId = uuid();
-  db.prepare(
-    `INSERT INTO income_records (id, quotation_id, job_id, amount, recorded_by)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(incomeId, quotation.id, quotation.job_id, markupAmount, req.user.id);
-
-  logAction({
-    user: req.user,
-    action: 'quote.payment_confirm',
-    entityType: 'quotation',
-    entityId: req.params.id,
-    details: { job_id: quotation.job_id, amount: markupAmount },
+    details: { project_id: quotation.project_id, option_number: quotation.option_number },
   });
 
   res.json(quoteService.getQuotationWithItems(req.params.id));
 });
 
 // PUT /quotes/:id -> edit quotation (items, markup, description, status)
-router.put('/:id', authenticate, authorize('admin', 'manager'), (req, res) => {
+// Allowed for admin only while the project is still 'prospect'; once quoting has moved past
+// prospect (a quote was selected), only a super_admin can still edit the locked/selected quote.
+router.put('/:id', authenticate, authorize('admin', 'super_admin'), (req, res) => {
+  const existing = db.prepare('SELECT * FROM quotations WHERE id = ?').get(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Quotation not found.' });
+  }
+  const project = db.prepare('SELECT status FROM projects WHERE id = ?').get(existing.project_id);
+  if (project.status !== 'prospect' && req.user.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Quoting is locked for this project. Only a super admin can edit it now.' });
+  }
+
   const { title, power_description, markup_percent, items, status } = req.body;
 
   const updated = quoteService.updateQuotation(req.params.id, {
@@ -174,14 +156,11 @@ router.put('/:id', authenticate, authorize('admin', 'manager'), (req, res) => {
     userId: req.user.id,
   });
 
-  if (!updated) {
-    return res.status(404).json({ error: 'Quotation not found.' });
-  }
   logAction({ user: req.user, action: 'quote.update', entityType: 'quotation', entityId: req.params.id });
   res.json(updated);
 });
 
-router.delete('/:id', authenticate, authorize('admin'), (req, res) => {
+router.delete('/:id', authenticate, authorize('super_admin'), (req, res) => {
   const result = db.prepare('DELETE FROM quotations WHERE id = ?').run(req.params.id);
   if (result.changes === 0) {
     return res.status(404).json({ error: 'Quotation not found.' });

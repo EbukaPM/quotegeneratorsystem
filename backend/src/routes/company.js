@@ -9,7 +9,7 @@ router.get('/', authenticate, (req, res) => {
   res.json(getCompanyProfile());
 });
 
-router.put('/', authenticate, authorize('admin', 'manager'), (req, res) => {
+router.put('/', authenticate, authorize('admin', 'super_admin'), (req, res) => {
   const {
     name,
     regNumber,

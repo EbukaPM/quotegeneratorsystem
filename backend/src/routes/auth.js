@@ -16,13 +16,13 @@ function signToken(user) {
   );
 }
 
-router.post('/register', authenticate, authorize('admin'), (req, res) => {
+router.post('/register', authenticate, authorize('super_admin'), (req, res) => {
   const { name, email, password, role } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'name, email and password are required.' });
   }
-  if (role && !['admin', 'manager', 'staff'].includes(role)) {
+  if (role && !['admin', 'super_admin'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role.' });
   }
 
@@ -35,9 +35,9 @@ router.post('/register', authenticate, authorize('admin'), (req, res) => {
   const passwordHash = bcrypt.hashSync(password, 10);
   db.prepare(
     'INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, name, email, passwordHash, role || 'staff');
+  ).run(id, name, email, passwordHash, role || 'admin');
 
-  const user = { id, name, email, role: role || 'staff' };
+  const user = { id, name, email, role: role || 'admin' };
   logAction({
     user: req.user,
     action: 'user.create',
@@ -58,6 +58,9 @@ router.post('/login', (req, res) => {
   if (!row || !bcrypt.compareSync(password, row.password_hash)) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
+  if (row.status === 'Inactive') {
+    return res.status(401).json({ error: 'This account has been deactivated.' });
+  }
 
   const user = { id: row.id, name: row.name, email: row.email, role: row.role };
   logAction({ user, action: 'auth.login', entityType: 'user', entityId: user.id });
@@ -66,6 +69,24 @@ router.post('/login', (req, res) => {
 
 router.get('/me', authenticate, (req, res) => {
   res.json({ user: req.user });
+});
+
+router.put('/change-password', authenticate, (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'current_password and new_password are required.' });
+  }
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+  }
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  if (!bcrypt.compareSync(current_password, row.password_hash)) {
+    return res.status(401).json({ error: 'Current password is incorrect.' });
+  }
+  const passwordHash = bcrypt.hashSync(new_password, 10);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, req.user.id);
+  logAction({ user: req.user, action: 'user.change_password', entityType: 'user', entityId: req.user.id });
+  res.json({ success: true });
 });
 
 module.exports = router;

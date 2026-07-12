@@ -1,6 +1,6 @@
 import client from './client';
 
-export const listQuotesForJob = (jobId) => client.get(`/quotes/${jobId}`).then((res) => res.data);
+export const listQuotesForProject = (projectId) => client.get(`/quotes/${projectId}`).then((res) => res.data);
 export const getQuoteDetail = (id) => client.get(`/quotes/detail/${id}`).then((res) => res.data);
 export const getQuoteVersions = (id) => client.get(`/quotes/${id}/versions`).then((res) => res.data);
 export const createQuote = (payload) => client.post('/quotes', payload).then((res) => res.data);
@@ -8,7 +8,6 @@ export const updateQuote = (id, payload) => client.put(`/quotes/${id}`, payload)
 export const deleteQuote = (id) => client.delete(`/quotes/${id}`).then((res) => res.data);
 export const selectQuote = (id, selected = true) =>
   client.put(`/quotes/${id}/select`, { selected }).then((res) => res.data);
-export const confirmQuotePayment = (id) => client.put(`/quotes/${id}/confirm-payment`, {}).then((res) => res.data);
 
 export const getQuotePdfUrl = (id) => {
   const base = import.meta.env.VITE_API_BASE_URL || '/api';
