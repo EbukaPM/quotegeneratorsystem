@@ -34,8 +34,8 @@ export default function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <img src="/safebox-icon.png" alt="Safebox Energy" className="auth-logo" />
-        <h1>Safebox Quotation System</h1>
-        <p className="auth-subtitle">Sign in to manage jobs and quotations</p>
+        <h1>Safebox Portal</h1>
+        <p className="auth-subtitle">Sign in to manage projects, inventory and payments</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 

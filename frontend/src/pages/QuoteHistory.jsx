@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getQuoteVersions, getQuoteDetail } from '../api/quotes';
+import BackButton from '../components/BackButton';
+import Pagination from '../components/Pagination';
+import usePagination from '../hooks/usePagination';
 
 export default function QuoteHistory() {
   const { quoteId } = useParams();
@@ -19,16 +22,18 @@ export default function QuoteHistory() {
       .finally(() => setLoading(false));
   }, [quoteId]);
 
+  const { page, setPage, totalPages, paginated } = usePagination(versions, 10);
+
   if (loading) return <div className="page-loading">Loading history...</div>;
   if (error) return <div className="alert alert-error">{error}</div>;
 
   return (
     <div>
+      <BackButton fallback={quote ? `/projects/${quote.project_id}` : '/projects'} label="Back to Project" />
       <h1 className="page-title">Version History</h1>
       {quote && (
         <p className="page-subtitle">
-          <Link to={`/jobs/${quote.job_id}`}>&larr; Back to job</Link> &middot; Option {quote.option_number} &mdash;{' '}
-          {quote.title}
+          Option {quote.option_number} &mdash; {quote.title}
         </p>
       )}
 
@@ -43,7 +48,7 @@ export default function QuoteHistory() {
             </tr>
           </thead>
           <tbody>
-            {versions.map((v) => (
+            {paginated.map((v) => (
               <tr key={v.id}>
                 <td>v{v.version_number}</td>
                 <td>
@@ -60,6 +65,7 @@ export default function QuoteHistory() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
     </div>
   );

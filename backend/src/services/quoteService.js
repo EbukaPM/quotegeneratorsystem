@@ -17,7 +17,7 @@ function computeTotals(items, markupPercent) {
 function replaceQuotationItems(quotationId, items) {
   db.prepare('DELETE FROM quotation_items WHERE quotation_id = ?').run(quotationId);
   const insert = db.prepare(
-    `INSERT INTO quotation_items (id, quotation_id, sn, item_id, name, quantity, quantity_label, unit_cost, total)
+    `INSERT INTO quotation_items (id, quotation_id, sn, product_id, name, quantity, quantity_label, unit_cost, total)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   items.forEach((item, index) => {
@@ -26,7 +26,7 @@ function replaceQuotationItems(quotationId, items) {
       uuid(),
       quotationId,
       index + 1,
-      item.item_id || null,
+      item.product_id || null,
       item.name,
       item.quantity,
       item.quantity_label || null,
@@ -59,13 +59,13 @@ function snapshotAndVersion(quotationId, changeType, userId) {
   ).run(uuid(), quotationId, versionNumber, changeType, JSON.stringify(snapshot), userId);
 }
 
-function createQuotation({ jobId, optionNumber, title, powerDescription, markupPercent, items, userId }) {
+function createQuotation({ projectId, optionNumber, title, powerDescription, markupPercent, items, userId }) {
   const { subtotal, grandTotal } = computeTotals(items, markupPercent);
   const id = uuid();
   db.prepare(
-    `INSERT INTO quotations (id, job_id, option_number, title, power_description, markup_percent, subtotal, grand_total, created_by)
+    `INSERT INTO quotations (id, project_id, option_number, title, power_description, markup_percent, subtotal, grand_total, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, jobId, optionNumber, title || `OPTION ${optionNumber}`, powerDescription || null, markupPercent || 0, subtotal, grandTotal, userId);
+  ).run(id, projectId, optionNumber, title || `OPTION ${optionNumber}`, powerDescription || null, markupPercent || 0, subtotal, grandTotal, userId);
 
   replaceQuotationItems(id, items);
   snapshotAndVersion(id, 'create', userId);

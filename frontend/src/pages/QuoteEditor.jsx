@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
-import { getJob } from '../api/jobs';
-import { getQuoteDetail, createQuote, updateQuote, listQuotesForJob } from '../api/quotes';
-import { listItems } from '../api/items';
+import { getProject } from '../api/projects';
+import { getQuoteDetail, createQuote, updateQuote, listQuotesForProject } from '../api/quotes';
+import { listProducts } from '../api/products';
+import BackButton from '../components/BackButton';
 
 const currency = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -12,15 +13,15 @@ const currency = new Intl.NumberFormat(undefined, {
 });
 
 function emptyLine() {
-  return { item_id: '', name: '', quantity: 1, quantity_label: '', unit_cost: 0 };
+  return { product_id: '', name: '', quantity: 1, quantity_label: '', unit_cost: 0 };
 }
 
 export default function QuoteEditor() {
-  const { jobId, quoteId } = useParams();
+  const { projectId, quoteId } = useParams();
   const navigate = useNavigate();
   const isEditing = Boolean(quoteId);
 
-  const [job, setJob] = useState(null);
+  const [project, setProject] = useState(null);
   const [catalog, setCatalog] = useState([]);
   const [optionNumber, setOptionNumber] = useState(1);
   const [title, setTitle] = useState('');
@@ -30,47 +31,47 @@ export default function QuoteEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [effectiveJobId, setEffectiveJobId] = useState(jobId);
+  const [effectiveProjectId, setEffectiveProjectId] = useState(projectId);
 
   useEffect(() => {
     setLoading(true);
-    listItems()
+    listProducts()
       .then(setCatalog)
       .catch(() => {});
 
     if (isEditing) {
       getQuoteDetail(quoteId)
         .then((quote) => {
-          setEffectiveJobId(quote.job_id);
+          setEffectiveProjectId(quote.project_id);
           setOptionNumber(quote.option_number);
           setTitle(quote.title || '');
           setPowerDescription(quote.power_description || '');
           setMarkupPercent(quote.markup_percent);
           setLines(
             quote.items.map((item) => ({
-              item_id: item.item_id || '',
+              product_id: item.product_id || '',
               name: item.name,
               quantity: item.quantity,
               quantity_label: item.quantity_label || '',
               unit_cost: item.unit_cost,
             }))
           );
-          return getJob(quote.job_id);
+          return getProject(quote.project_id);
         })
-        .then(setJob)
+        .then(setProject)
         .catch(() => setError('Failed to load quotation.'))
         .finally(() => setLoading(false));
     } else {
-      Promise.all([getJob(jobId), listQuotesForJob(jobId)])
-        .then(([jobData, existingQuotes]) => {
-          setJob(jobData);
+      Promise.all([getProject(projectId), listQuotesForProject(projectId)])
+        .then(([projectData, existingQuotes]) => {
+          setProject(projectData);
           setOptionNumber(existingQuotes.length + 1);
           setTitle(`Option ${existingQuotes.length + 1}`);
         })
-        .catch(() => setError('Failed to load job.'))
+        .catch(() => setError('Failed to load project.'))
         .finally(() => setLoading(false));
     }
-  }, [jobId, quoteId, isEditing]);
+  }, [projectId, quoteId, isEditing]);
 
   const subtotal = useMemo(
     () => lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.unit_cost || 0), 0),
@@ -85,12 +86,12 @@ export default function QuoteEditor() {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   };
 
-  const handleCatalogSelect = (index, itemId) => {
-    const catalogItem = catalog.find((c) => c.id === itemId);
+  const handleCatalogSelect = (index, productId) => {
+    const catalogItem = catalog.find((c) => c.id === productId);
     updateLine(index, {
-      item_id: itemId,
-      name: catalogItem ? catalogItem.name : '',
-      unit_cost: catalogItem ? catalogItem.default_unit_cost : 0,
+      product_id: productId,
+      name: catalogItem ? catalogItem.model : '',
+      unit_cost: catalogItem ? catalogItem.unit_cost : 0,
     });
   };
 
@@ -102,13 +103,13 @@ export default function QuoteEditor() {
     setError('');
     setSaving(true);
     const payload = {
-      job_id: effectiveJobId,
+      project_id: effectiveProjectId,
       option_number: Number(optionNumber),
       title,
       power_description: powerDescription,
       markup_percent: Number(markupPercent),
       items: lines.map((l) => ({
-        item_id: l.item_id || null,
+        product_id: l.product_id || null,
         name: l.name,
         quantity: Number(l.quantity || 0),
         quantity_label: l.quantity_label || null,
@@ -122,7 +123,7 @@ export default function QuoteEditor() {
       } else {
         await createQuote(payload);
       }
-      navigate(`/jobs/${effectiveJobId}`);
+      navigate(`/projects/${effectiveProjectId}`);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save quotation.');
     } finally {
@@ -134,11 +135,12 @@ export default function QuoteEditor() {
 
   return (
     <div>
+      <BackButton fallback={`/projects/${effectiveProjectId}`} label="Back to Project" />
       <h1 className="page-title">
-        {isEditing ? 'Edit Quotation' : 'New Quotation Option'} {job ? `- ${job.name}` : ''}
+        {isEditing ? 'Edit Quotation' : 'New Quotation Option'} {project ? `- ${project.name}` : ''}
       </h1>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="alert alert-error" role="alert">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="panel form-grid">
@@ -176,7 +178,7 @@ export default function QuoteEditor() {
           <table className="editor-table">
             <thead>
               <tr>
-                <th>Catalog Item</th>
+                <th>Catalog Product</th>
                 <th>Name</th>
                 <th>Quantity</th>
                 <th>Display Qty (e.g. "15KVA", "LOTS")</th>
@@ -189,11 +191,11 @@ export default function QuoteEditor() {
               {lines.map((line, index) => (
                 <tr key={index}>
                   <td>
-                    <select value={line.item_id} onChange={(e) => handleCatalogSelect(index, e.target.value)}>
+                    <select value={line.product_id} onChange={(e) => handleCatalogSelect(index, e.target.value)}>
                       <option value="">Custom</option>
                       {catalog.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.name}
+                          {c.model}
                         </option>
                       ))}
                     </select>
@@ -225,7 +227,7 @@ export default function QuoteEditor() {
                   </td>
                   <td>{currency.format(Number(line.quantity || 0) * Number(line.unit_cost || 0))}</td>
                   <td>
-                    <button type="button" className="icon-btn" onClick={() => removeLine(index)}>
+                    <button type="button" className="icon-btn" onClick={() => removeLine(index)} aria-label="Remove line">
                       <IconTrash size={18} />
                     </button>
                   </td>

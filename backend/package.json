@@ -1,7 +1,7 @@
 {
-  "name": "safebox-quotation-backend",
+  "name": "safebox-portal-backend",
   "version": "1.0.0",
-  "description": "Safebox Quotation System backend (Express + SQLite)",
+  "description": "Safebox Portal backend — inventory, quotation and payments (Express + SQLite)",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

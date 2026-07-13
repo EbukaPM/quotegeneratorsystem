@@ -4,7 +4,7 @@ const { listAuditLog } = require('../services/auditService');
 
 const router = express.Router();
 
-router.get('/', authenticate, authorize('admin'), (req, res) => {
+router.get('/', authenticate, authorize('super_admin'), (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   res.json(listAuditLog({ limit, offset }));
