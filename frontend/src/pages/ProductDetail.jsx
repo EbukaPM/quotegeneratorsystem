@@ -37,17 +37,6 @@ export default function ProductDetail() {
       .finally(() => setLoading(false));
   }, [productId]);
 
-  if (loading) return <div className="page-loading">Loading product...</div>;
-  if (!product) {
-    return (
-      <div>
-        <BackButton fallback="/products" label="Back to Products" />
-        <div className="alert alert-error">Product not found.</div>
-      </div>
-    );
-  }
-
-  const currentStock = stockInfo?.current_stock ?? 0;
   const years = yearsFrom(movements, 'date');
   const filteredMovements = filterByDate(movements, 'date', { dateFrom, dateTo, month: monthFilter, year: yearFilter })
     .filter(
@@ -65,19 +54,35 @@ export default function ProductDetail() {
   const IN_TYPES = ['Purchase (IN)', 'Return (IN)', 'Transfer IN', 'Client Return to Stock', 'Project Return to Stock'];
   const { page, setPage, totalPages, paginated } = usePagination(filteredMovements, 10);
 
+  if (loading) return <div className="page-loading">Loading product...</div>;
+  if (!product) {
+    return (
+      <div>
+        <div className="page-sticky-header">
+          <BackButton fallback="/products" label="Back to Products" />
+        </div>
+        <div className="alert alert-error">Product not found.</div>
+      </div>
+    );
+  }
+
+  const currentStock = stockInfo?.current_stock ?? 0;
+
   return (
     <div>
-      <BackButton fallback="/products" label="Back to Products" />
+      <div className="page-sticky-header">
+        <BackButton fallback="/products" label="Back to Products" />
 
-      <div className="ph">
-        <div className="ph-heading">
-          <span className="ph-icon"><IconBoxSeam size={20} /></span>
-          <div>
-            <h1 className="ph-title">{product.brand ? `${product.brand} ` : ''}{product.model}</h1>
-            <p className="ph-subtitle">{product.id} · {product.category}{product.subcategory ? ` / ${product.subcategory}` : ''}</p>
+        <div className="ph">
+          <div className="ph-heading">
+            <span className="ph-icon"><IconBoxSeam size={20} /></span>
+            <div>
+              <h1 className="ph-title">{product.brand ? `${product.brand} ` : ''}{product.model}</h1>
+              <p className="ph-subtitle">{product.id} · {product.category}{product.subcategory ? ` / ${product.subcategory}` : ''}</p>
+            </div>
           </div>
+          <StatusBadge type="approvalStatus" value={product.status} />
         </div>
-        <StatusBadge type="approvalStatus" value={product.status} />
       </div>
 
       <div className="stat-grid">
